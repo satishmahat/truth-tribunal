@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+body {
+    font-family: 'Raleway', sans-serif;
+}
+
+/* Remove default ProseMirror border for Tiptap editor */
+.ProseMirror {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  min-height: 100px;
+}
+
+/* Style headings in Tiptap editor */
+.ProseMirror h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.5em 0;
+}
+.ProseMirror h2 {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 0.4em 0;
+}
+
+/* Custom Toastify theme: black and red */
+.toast-black-red .Toastify__toast {
+  background: #111;
+  color: #fff;
+  border-left: 6px solid #b91c1c;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.toast-black-red .Toastify__toast--success {
+  border-left-color: #16a34a;
+  background: #111;
+  color: #fff;
+}
+.toast-black-red .Toastify__toast--error {
+  border-left-color: #b91c1c;
+  background: #111;
+  color: #fff;
+}
+.toast-black-red .Toastify__close-button {
+  color: #fff;
+}
+.toast-black-red .Toastify__progress-bar {
+  background: #b91c1c;
+}
+
+/* Custom Scrollbar Styles to match Navbar */
+::-webkit-scrollbar {
+  width: 2px;
+  height: 2px;
+}
+::-webkit-scrollbar-thumb {
+  background: #b91c1c; /* red-700 */
+  border-radius: 8px;
+  border: 2px solid #111; /* black border to match navbar bg */
+}
+::-webkit-scrollbar-track {
+  background: #111; /* black */
+  border-radius: 8px;
+}
+::-webkit-scrollbar-corner {
+  background: #111;
+}
+
+/* Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #680000 #111;
+}
+button {
+  cursor: pointer;
+}

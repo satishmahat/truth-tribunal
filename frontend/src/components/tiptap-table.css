@@ -1,0 +1,23 @@
+/* Tiptap Table Styling for MS Word-like appearance */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  background: white;
+}
+th, td {
+  border: 1px solid #d1d5db; /* Tailwind gray-300 */
+  padding: 0.5em 1em;
+  text-align: left;
+}
+th {
+  background: #f3f4f6; /* Tailwind gray-100 */
+  font-weight: 600;
+}
+tr:nth-child(even) td {
+  background: #f9fafb; /* Tailwind gray-50 */
+}
+tr:hover td {
+  background: #e0e7ef; /* subtle hover */
+} 
