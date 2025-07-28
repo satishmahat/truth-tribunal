@@ -1,0 +1,22 @@
+| Category         | Hyperparameter         | Recommended Value | Notes                                   |
+| ---------------- | ---------------------- | ----------------- | --------------------------------------- |
+| **Embedding**    | `embedding_dim`        | **300**           | Use pre-trained GloVe (`glove.6B.300d`) |
+|                  | `trainable_embeddings` | **True**          | Fine-tune improves accuracy slightly    |
+| **BiLSTM Layer** | `hidden_size`          | **256**           | Stronger memory for long text           |
+|                  | `num_layers`           | **2**             | Stacked for more abstraction            |
+|                  | `bidirectional`        | **True**          | Required for context in both directions |
+|                  | `dropout_lstm`         | **0.4**           | Dropout between LSTM layers             |
+| **CNN Layer**    | `cnn_kernel_sizes`     | **\[2, 3, 4]**    | Capture bi/tri/quad-gram features       |
+|                  | `cnn_num_filters`      | **128**           | More filters improve feature detection  |
+|                  | `dropout_cnn`          | **0.5**           | Helps prevent overfitting               |
+| **FC Layer**     | `fc_hidden_dim`        | **64**            | Size of dense layer before final output |
+|                  | `dropout_fc`           | **0.5**           | Final dropout before output             |
+| **Training**     | `batch_size`           | **32**            | Balance between stability and GPU load  |
+|                  | `learning_rate`        | **2e-4**          | Lower for stable convergence            |
+|                  | `optimizer`            | **AdamW**         | Better regularization than Adam         |
+|                  | `epochs`               | **10–15**         | Use early stopping                      |
+|                  | `weight_decay`         | **0.01**          | Regularization                          |
+|                  | `grad_clip`            | **1.0**           | Prevent exploding gradients             |
+| **Sequence**     | `max_seq_len`          | **256**           | Long enough for IMDb reviews            |
+|                  | `pad_to_max_len`       | **True**          | Needed for batch training               |
+|                  | `truncate_long`        | **True**          | Drop overflow tokens                    |
