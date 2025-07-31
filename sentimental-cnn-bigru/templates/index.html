@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis - BiGRU-CNN Model</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-positive {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .result-negative {
+            background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+            color: white;
+        }
+
+        .result-neutral {
+            background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
+            color: white;
+        }
+
+        .sentiment-label {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .confidence-bar {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            height: 20px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+
+        .confidence-text {
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #c62828;
+        }
+
+        .example-texts {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .example-texts h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .example-btn {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .example-btn:hover {
+            background: #e0e0e0;
+            border-color: #bbb;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .btn {
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 Sentiment Analyzer</h1>
+            <p>Analyze the sentiment of your text using our advanced BiGRU-CNN model</p>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label for="textInput">Enter your text:</label>
+                <textarea 
+                    id="textInput" 
+                    placeholder="Type or paste your text here to analyze its sentiment..."
+                    maxlength="1000"
+                ></textarea>
+            </div>
+            
+            <button class="btn" id="analyzeBtn" onclick="analyzeSentiment()">
+                🔍 Analyze Sentiment
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing sentiment...</p>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="sentiment-label" id="sentimentLabel"></div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceFill"></div>
+            </div>
+            <div class="confidence-text" id="confidenceText"></div>
+        </div>
+
+        <div class="example-texts">
+            <h3>💡 Try these examples:</h3>
+            <button class="example-btn" onclick="setExampleText('This movie was absolutely fantastic! The acting was superb and the plot was engaging from start to finish.')">
+                Positive Review
+            </button>
+            <button class="example-btn" onclick="setExampleText('I really enjoyed this product. The quality is excellent and it works perfectly. Highly recommended!')">
+                Positive Product
+            </button>
+            <button class="example-btn" onclick="setExampleText('This was the worst experience ever. Terrible service and poor quality. I would never recommend this to anyone.')">
+                Negative Review
+            </button>
+            <button class="example-btn" onclick="setExampleText('The food was cold, the service was slow, and the atmosphere was terrible. Complete waste of money.')">
+                Negative Restaurant
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function setExampleText(text) {
+            document.getElementById('textInput').value = text;
+        }
+
+        async function analyzeSentiment() {
+            const textInput = document.getElementById('textInput');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loading');
+            const resultSection = document.getElementById('resultSection');
+            
+            const text = textInput.value.trim();
+            
+            if (!text) {
+                alert('Please enter some text to analyze.');
+                return;
+            }
+
+            // Show loading state
+            analyzeBtn.disabled = true;
+            loading.classList.add('show');
+            resultSection.classList.remove('show');
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    showError(result.error);
+                } else {
+                    showResult(result);
+                }
+            } catch (error) {
+                showError('Failed to connect to the server. Please try again.');
+            } finally {
+                // Hide loading state
+                analyzeBtn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        function showResult(result) {
+            const resultSection = document.getElementById('resultSection');
+            const sentimentLabel = document.getElementById('sentimentLabel');
+            const confidenceFill = document.getElementById('confidenceFill');
+            const confidenceText = document.getElementById('confidenceText');
+
+            // Set sentiment label
+            sentimentLabel.textContent = result.sentiment;
+
+            // Set confidence bar
+            confidenceFill.style.width = result.confidence + '%';
+            confidenceText.textContent = `Confidence: ${result.confidence}%`;
+
+            // Set appropriate styling
+            resultSection.className = 'result-section show';
+            if (result.sentiment === 'Positive') {
+                resultSection.classList.add('result-positive');
+            } else if (result.sentiment === 'Negative') {
+                resultSection.classList.add('result-negative');
+            } else {
+                resultSection.classList.add('result-neutral');
+            }
+        }
+
+        function showError(message) {
+            const resultSection = document.getElementById('resultSection');
+            resultSection.innerHTML = `
+                <div class="error">
+                    <strong>Error:</strong> ${message}
+                </div>
+            `;
+            resultSection.className = 'result-section show';
+        }
+
+        // Allow Enter key to trigger analysis
+        document.getElementById('textInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                analyzeSentiment();
+            }
+        });
+
+        // Auto-resize textarea
+        document.getElementById('textInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        });
+    </script>
+</body>
+</html> 
