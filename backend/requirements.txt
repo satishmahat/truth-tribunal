@@ -6,3 +6,9 @@ Werkzeug
 flask-cors
 python-dotenv
 gunicorn
+torch
+transformers
+transformers-interpret==0.9.6
+tokenizers
+numpy
+newspaper3k

@@ -43,34 +43,61 @@ export default function Register() {
   };
 
   const uploadToCloudinary = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_CONFIG.UPLOAD_PRESET);
-    const res = await fetch(CLOUDINARY_CONFIG.UPLOAD_URL, {
-      method: 'POST',
-      body: formData
-    });
-    const data = await res.json();
-    return data.secure_url;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_CONFIG.UPLOAD_PRESET);
+      const res = await fetch(CLOUDINARY_CONFIG.UPLOAD_URL, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Cloudinary upload failed: ${res.status} ${res.statusText}`);
+      }
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(`Cloudinary error: ${data.error.message}`);
+      }
+      
+      if (!data.secure_url) {
+        throw new Error('No secure URL returned from Cloudinary');
+      }
+      
+      return data.secure_url;
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (uploading) {
+      toast.error('Registration in progress, please wait...');
+      return;
+    }
     if (!profileFile || !idCardFile) {
       toast.error('Please select both profile photo and ID card image.');
       return;
     }
     setUploading(true);
     try {
+      console.log('Starting Cloudinary uploads...');
       const [profileUrl, idCardUrl] = await Promise.all([
         uploadToCloudinary(profileFile),
         uploadToCloudinary(idCardFile)
       ]);
+      console.log('Cloudinary uploads completed:', { profileUrl, idCardUrl });
+      
       const payload = {
         ...form,
         profile_photo_url: profileUrl,
         reporter_id_card_url: idCardUrl
       };
+      console.log('Submitting registration payload...');
       await api.post('/register', payload);
       toast.success('Registration submitted! Please wait for admin approval and your license key.');
       setForm({
@@ -86,7 +113,8 @@ export default function Register() {
       setIdCardPreview(null);
       setSubmitted(true);
     } catch (err) {
-      toast.error('Registration or image upload failed.');
+      console.error('Registration error:', err);
+      toast.error(err.message || 'Registration or image upload failed.');
     } finally {
       setUploading(false);
     }

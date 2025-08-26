@@ -49,14 +49,23 @@ def load_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
+    # Load vocab first
+    vocab_path = 'result/vocab.pt'
+    if os.path.exists(vocab_path):
+        vocab = torch.load(vocab_path)
+        print(f"Vocabulary loaded from {vocab_path}")
+    else:
+        print(f"Warning: Vocabulary file {vocab_path} not found. Please train the model first.")
+        return False
+    
     # Model hyperparameters - updated to match the trained model
-    VOCAB_SIZE = 20002  # Updated to match the trained model
+    VOCAB_SIZE = len(vocab)  # Dynamic vocabulary size
     EMBEDDING_DIM = 256
     HIDDEN_DIM = 250
     OUTPUT_DIM = 1
     N_LAYERS = 1
     BIDIRECTIONAL = True
-    DROPOUT_LSTM = 0.0  # Set to 0 since num_layers=1
+    DROPOUT_GRU = 0.0  # Set to 0 since num_layers=1
     CNN_KERNEL_SIZES = [2, 3, 4, 5]
     CNN_NUM_FILTERS = 96
     DROPOUT_CNN = 0.4
@@ -66,7 +75,7 @@ def load_model():
     
     # Initialize model
     model = BiGRU_CNN(VOCAB_SIZE, EMBEDDING_DIM, HIDDEN_DIM, OUTPUT_DIM, N_LAYERS, 
-                      BIDIRECTIONAL, DROPOUT_LSTM, CNN_KERNEL_SIZES, CNN_NUM_FILTERS, 
+                      BIDIRECTIONAL, DROPOUT_GRU, CNN_KERNEL_SIZES, CNN_NUM_FILTERS, 
                       DROPOUT_CNN, FC_HIDDEN_DIM, DROPOUT_FC, PAD_IDX).to(device)
     
     # Load trained model weights
@@ -78,27 +87,6 @@ def load_model():
     else:
         print(f"Warning: Model file {model_path} not found. Please train the model first.")
         return False
-    
-    # For now, create a simple vocabulary for inference
-    # In a production environment, you should save and load the actual vocabulary from training
-    vocab = {'<pad>': 0, '<unk>': 1}
-    
-    # Add some common words to the vocabulary
-    common_words = [
-        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
-        'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-        'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
-        'good', 'bad', 'great', 'terrible', 'excellent', 'awful', 'amazing', 'horrible',
-        'love', 'hate', 'like', 'dislike', 'enjoy', 'enjoyed', 'enjoying',
-        'movie', 'film', 'book', 'product', 'service', 'food', 'restaurant',
-        'acting', 'plot', 'story', 'quality', 'price', 'value', 'experience',
-        'fantastic', 'wonderful', 'amazing', 'brilliant', 'outstanding',
-        'terrible', 'awful', 'horrible', 'disgusting', 'disappointing',
-        'recommend', 'recommended', 'avoid', 'never', 'always', 'best', 'worst'
-    ]
-    
-    for i, word in enumerate(common_words, start=2):
-        vocab[word] = i
     
     print("Model and vocabulary loaded successfully")
     return True

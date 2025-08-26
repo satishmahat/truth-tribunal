@@ -110,7 +110,7 @@ HIDDEN_DIM = 250
 OUTPUT_DIM = 1
 N_LAYERS = 1
 BIDIRECTIONAL = True
-DROPOUT_LSTM = 0.4
+DROPOUT_GRU = 0.4
 CNN_KERNEL_SIZES = [2, 3, 4, 5]
 CNN_NUM_FILTERS = 96
 DROPOUT_CNN = 0.4
@@ -127,6 +127,8 @@ MAX_SEQ_LEN = 512
 # 4. Data (use IMDb)
 imdb_root = 'imdb_data/aclImdb'
 train_dataset = IMDBDataset(imdb_root, 'train', max_seq_len=MAX_SEQ_LEN)
+os.makedirs('result', exist_ok=True)
+torch.save(train_dataset.vocab, 'result/vocab.pt')
 # Set VOCAB_SIZE to match the actual vocab size
 VOCAB_SIZE = len(train_dataset.vocab)
 test_dataset = IMDBDataset(imdb_root, 'test', vocab=train_dataset.vocab, max_seq_len=MAX_SEQ_LEN)
@@ -143,22 +145,15 @@ test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
 # 5. Training Setup
 os.makedirs('result', exist_ok=True)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = BiGRU_CNN(VOCAB_SIZE, EMBEDDING_DIM, HIDDEN_DIM, OUTPUT_DIM, N_LAYERS, BIDIRECTIONAL, DROPOUT_LSTM, CNN_KERNEL_SIZES, CNN_NUM_FILTERS, DROPOUT_CNN, FC_HIDDEN_DIM, DROPOUT_FC, PAD_IDX).to(device)
+model = BiGRU_CNN(VOCAB_SIZE, EMBEDDING_DIM, HIDDEN_DIM, OUTPUT_DIM, N_LAYERS, BIDIRECTIONAL, DROPOUT_GRU, CNN_KERNEL_SIZES, CNN_NUM_FILTERS, DROPOUT_CNN, FC_HIDDEN_DIM, DROPOUT_FC, PAD_IDX).to(device)
 optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
 criterion = nn.BCEWithLogitsLoss().to(device)
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
 
-# Early stopping
-# if val_loss < best_val_loss:
-#     best_val_loss = val_loss
-#     counter = 0
-#     # Save best model
-#     torch.save(model.state_dict(), 'result/best_model.pt')
-# else:
-#     counter += 1
-#     if counter >= patience:
-#         print('Early stopping!')
-#         break
+# Early stopping variables
+best_val_loss = float('inf')
+patience = 50
+counter = 0
 
 def binary_accuracy(preds, y):
     rounded = torch.round(torch.sigmoid(preds))
@@ -235,16 +230,16 @@ for epoch in range(EPOCHS):
     scheduler.step(val_loss)
 
     # Early stopping
-    # if val_loss < best_val_loss:
-    #     best_val_loss = val_loss
-    #     counter = 0
-    #     # Save best model
-    #     torch.save(model.state_dict(), 'result/best_model.pt')
-    # else:
-    #     counter += 1
-    #     if counter >= patience:
-    #         print('Early stopping!')
-    #         break
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        counter = 0
+        # Save best model
+        torch.save(model.state_dict(), 'result/best_model.pt')
+    else:
+        counter += 1
+        if counter >= patience:
+            print('Early stopping!')
+            break
 
 # Save the trained model
 MODEL_PATH = 'result/bigru_cnn_sentiment.pt'

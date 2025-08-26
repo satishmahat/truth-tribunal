@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fake News Detector</title>
+  <style>
+    body { font-family: sans-serif; margin:2rem; }
+    textarea { width:100%; height:150px; }
+    .result { margin-top:1rem; padding:1rem; border:1px solid #ccc; }
+    .attention { white-space: pre-wrap; border:1px solid #ddd; padding:1rem; }
+  </style>
+</head>
+<body>
+  <h1>Fake News Detector</h1>
+  <form method="post">
+    <textarea name="input" placeholder="Paste news text or URL…"></textarea><br>
+    <button type="submit">Analyze</button>
+  </form>
+
+  {% if label %}
+  <div class="result">
+    <p><strong>Prediction:</strong> {{ label }} ({{ confidence }})</p>
+    <p><strong>Source Credibility:</strong> {{ credibility }}</p>
+    <h3>Attention Map</h3>
+    <div>
+        {{ attention_map|safe }}
+    </div>
+  </div>
+  {% endif %}
+</body>
+</html>

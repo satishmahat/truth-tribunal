@@ -146,28 +146,54 @@ export default function NewsForm() {
   };
 
   const uploadToCloudinary = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_CONFIG.UPLOAD_PRESET);
-    const res = await fetch(CLOUDINARY_CONFIG.UPLOAD_URL, {
-      method: 'POST',
-      body: formData
-    });
-    const data = await res.json();
-    return data.secure_url;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_CONFIG.UPLOAD_PRESET);
+      const res = await fetch(CLOUDINARY_CONFIG.UPLOAD_URL, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Cloudinary upload failed: ${res.status} ${res.statusText}`);
+      }
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(`Cloudinary error: ${data.error.message}`);
+      }
+      
+      if (!data.secure_url) {
+        throw new Error('No secure URL returned from Cloudinary');
+      }
+      
+      return data.secure_url;
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (uploading) {
+      toast.error('News submission in progress, please wait...');
+      return;
+    }
     setUploading(true);
     try {
       let uploadedCoverUrl = coverImage;
       if (coverFile) {
+        console.log('Starting cover image upload...');
         uploadedCoverUrl = await uploadToCloudinary(coverFile);
+        console.log('Cover image upload completed:', uploadedCoverUrl);
         setCoverImage(uploadedCoverUrl);
       }
       // Combine all block HTML into a single string
       const content = blocks.map(b => b.content).join('<br/>' /* or '' for no gap */);
+      console.log('Submitting news article...');
       await api.post('/news', {
         title,
         content,
@@ -184,7 +210,8 @@ export default function NewsForm() {
       setCategory('');
       toast.success('News posted!');
     } catch (err) {
-      toast.error('News post or image upload failed');
+      console.error('News post error:', err);
+      toast.error(err.message || 'News post or image upload failed');
     } finally {
       setUploading(false);
     }
