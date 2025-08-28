@@ -11,13 +11,17 @@ export const Detection = () => {
   const [adjusted, setAdjusted] = useState(null);
   const [uncertain, setUncertain] = useState(false);
   const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingDetect, setLoadingDetect] = useState(false);
+  const [loadingSentiment, setLoadingSentiment] = useState(false);
+  const [loadingReport, setLoadingReport] = useState(false);
   const [error, setError] = useState(null);
+  const [sentiment, setSentiment] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setLoadingDetect(true);
     setError(null);
+    setSentiment(null);
     setResult(null);
     setProbs(null);
     setReport(null);
@@ -34,12 +38,34 @@ export const Detection = () => {
     } catch (err) {
       setError(err.response?.data?.error || 'Prediction failed');
     } finally {
-      setLoading(false);
+      setLoadingDetect(false);
+    }
+  };
+
+  const handleSentiment = async () => {
+    setLoadingSentiment(true);
+    setError(null);
+    // Clear previous prediction-related state so only one result shows at a time
+    setResult(null);
+    setProbs(null);
+    setReport(null);
+    setSource(null);
+    setAdjusted(null);
+    setUncertain(false);
+    setSentiment(null);
+    try {
+      const { data } = await api.post('/sentiment', { text });
+      if (data?.error) throw { response: { data } };
+      setSentiment({ label: data.sentiment, confidence: data.confidence, ppos: data.probability_positive });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Sentiment analysis failed');
+    } finally {
+      setLoadingSentiment(false);
     }
   };
 
   const fetchReport = async () => {
-    setLoading(true);
+    setLoadingReport(true);
     setError(null);
     try {
       const { data } = await api.post('/detect/report', { text });
@@ -50,7 +76,7 @@ export const Detection = () => {
     } catch (err) {
       setError(err.response?.data?.error || 'Could not fetch report');
     } finally {
-      setLoading(false);
+      setLoadingReport(false);
     }
   }
 
@@ -77,14 +103,35 @@ export const Detection = () => {
               onChange={e => setText(e.target.value)}
               required
             />
-            <button
-              type="submit"
-              className="w-full bg-red-700 text-white py-2 rounded-lg hover:bg-red-800 transition text-lg shadow-md disabled:opacity-50"
-              disabled={loading || !text.trim()}
-            >
-              {loading ? 'Detecting...' : 'Detect'}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="submit"
+                className="flex-1 bg-red-700 text-white py-2 rounded-lg hover:bg-red-800 transition text-lg shadow-md disabled:opacity-50"
+                disabled={loadingDetect || !text.trim()}
+              >
+                {loadingDetect ? 'Detecting...' : 'Detect'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSentiment}
+                className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition text-lg shadow-md disabled:opacity-50"
+                disabled={loadingSentiment || !text.trim()}
+              >
+                {loadingSentiment ? 'Analyzing…' : 'Sentiment'}
+              </button>
+            </div>
           </form>
+          {sentiment && (
+            <div className={`px-4 py-2 rounded-sm text-lg shadow-sm border ${sentiment.label === 'Positive' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <span className="mr-2">Sentiment :</span>
+                  <span>{sentiment.label}</span>
+                  <span className="ml-2 text-sm text-gray-600">(Confidence: {Number(sentiment.confidence).toFixed(2)}%)</span>
+                </div>
+              </div>
+            </div>
+          )}
           {displayLabel && (
             <div className={`px-4 py-2 rounded-sm text-lg shadow-sm border ${displayLabel === 'Fake' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
               <div className="flex items-center justify-between gap-4">
@@ -114,10 +161,11 @@ export const Detection = () => {
                 <button
                   type="button"
                   onClick={fetchReport}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white text-red-700 border border-red-300 hover:bg-red-50 text-sm"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white text-red-700 border border-red-300 hover:bg-red-50 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={loadingReport || !text.trim()}
                 >
                   <FiFileText />
-                  View Report
+                  {loadingReport ? 'Generating Report...' : 'View Report'}
                 </button>
               </div>
             </div>
