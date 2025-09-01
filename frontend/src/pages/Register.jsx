@@ -114,7 +114,17 @@ export default function Register() {
       setSubmitted(true);
     } catch (err) {
       console.error('Registration error:', err);
-      toast.error(err.message || 'Registration or image upload failed.');
+      
+      // Handle validation errors from backend
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        // Show each validation error
+        err.response.data.errors.forEach(error => {
+          toast.error(error);
+        });
+      } else {
+        // Show general error message
+        toast.error(err.response?.data?.msg || err.message || 'Registration or image upload failed.');
+      }
     } finally {
       setUploading(false);
     }

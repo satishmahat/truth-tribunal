@@ -57,7 +57,14 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      toast.success(`Reporter approved! License key: ${response.data.license_key}`);
+      const { license_key, email_sent, msg } = response.data;
+      
+      if (email_sent) {
+        toast.success(`Reporter approved! License key: ${license_key} - Email sent to ${selectedUser.email}`);
+      } else {
+        toast.warning(`Reporter approved! License key: ${license_key} - Email failed to send to ${selectedUser.email}`);
+      }
+      
       setShowModal(false);
       setSelectedUser(null);
       loadData(); // Reload data to update both tables
@@ -381,6 +388,9 @@ export default function AdminDashboard() {
 
             {/* Modal Footer */}
             <div className="flex justify-end space-x-4 p-6 border-t border-gray-200">
+              <div className="flex-1 text-sm text-gray-600">
+                <p>💡 Upon approval, a license key will be automatically sent to <strong>{selectedUser?.email}</strong></p>
+              </div>
               <button
                 onClick={closeModal}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"

@@ -23,7 +23,20 @@ export default function AdminLogin() {
       login(userData, access_token);
       navigate('/admin');
     } catch (err) {
-      toast.error(err.response?.data?.msg || err.message || 'Login failed');
+      // Handle different types of errors more specifically
+      if (err.response?.status === 401) {
+        if (err.response.data?.msg === 'Invalid credentials') {
+          toast.error('Invalid email or password');
+        } else if (err.response.data?.msg === 'Invalid license key') {
+          toast.error('Invalid license key');
+        } else {
+          toast.error(err.response.data?.msg || 'Login failed');
+        }
+      } else if (err.response?.status === 403) {
+        toast.error('Account not approved yet');
+      } else {
+        toast.error(err.message || 'Login failed');
+      }
     }
   };
 

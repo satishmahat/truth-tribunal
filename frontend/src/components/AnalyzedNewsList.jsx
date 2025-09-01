@@ -262,7 +262,7 @@ const NewsCard = ({ article, onClick }) => {
             {article.category || 'Uncategorized'}
           </span>
           <span className="font-medium">
-            Confidence: {Math.round(article.confidence * 100)}%
+            Confidence: {Math.round(article.confidence)}%
           </span>
         </div>
       </div>

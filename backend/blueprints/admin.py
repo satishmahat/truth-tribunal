@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from extensions import db
 from models import User
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from services.email_service import send_approval_email
 import random
 import string
 from datetime import datetime
@@ -78,8 +79,22 @@ def approve_reporter():
     user.is_approved = True
     user.license_key = license_key
     db.session.commit()
-    # TODO: Send email with license_key
-    return jsonify({'msg': 'Reporter approved', 'license_key': license_key})
+    
+    # Send approval email with license key
+    email_sent = send_approval_email(user.email, user.name, license_key)
+    
+    response_data = {
+        'msg': 'Reporter approved', 
+        'license_key': license_key,
+        'email_sent': email_sent
+    }
+    
+    if email_sent:
+        response_data['msg'] += ' and email sent successfully'
+    else:
+        response_data['msg'] += ' but email failed to send'
+    
+    return jsonify(response_data)
 
 @admin_bp.route('/reporters', methods=['GET'])
 @jwt_required()
