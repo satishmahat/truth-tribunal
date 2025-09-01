@@ -141,13 +141,13 @@ python sentiment_analyzer.py
 ## 📊 Model Performance
 
 ### DistilBERT Fake News Detection
-- **Accuracy**: 94% on balanced test set
+- **Accuracy**: 99.97% on balanced test set
 - **Precision**: High precision for fake news detection
 - **Recall**: Balanced performance across classes
 - **Model Size**: ~66M parameters (distilled from BERT)
 
 ### BiGRU-CNN Sentiment Analysis
-- **Accuracy**: 87% on IMDb dataset
+- **Accuracy**: 86.07% on IMDb dataset
 - **Architecture**: Bidirectional GRU + CNN hybrid
 - **Vocabulary**: 10,000 most common words
 - **Sequence Length**: Up to 512 tokens

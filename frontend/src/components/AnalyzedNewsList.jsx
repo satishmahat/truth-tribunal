@@ -134,11 +134,11 @@ export const AnalyzedNewsList = () => {
   const currentArticles = analyzedArticles[activeTab] || [];
 
   return (
-    <div className='w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10'>
+    <div className='w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-8'>
       {/* Header Section */}
       <div className="flex items-center mb-8">
         <h1 className="text-3xl sm:text-4xl text-gray-800 whitespace-nowrap">Sentiment Based News</h1>
-        <div className="flex-1 h-0.5 bg-red-800 ml-4 lg:ml-6" />
+        <div className="flex-1 h-0.5 bg-red-800 mr-4 lg:mr-6" />
         {analyzing && (
           <div className="flex items-center gap-2 text-blue-600 ml-4">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>

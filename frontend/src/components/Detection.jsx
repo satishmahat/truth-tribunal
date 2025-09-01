@@ -86,14 +86,17 @@ export const Detection = () => {
   const displayProbs = displayIsAdjusted ? adjusted?.probabilities : probs
 
   return (
-    <section className="w-full max-w-7xl flex justify-center items-center mb-10 px-4 sm:px-6 lg:px-8" >
-      <div className="w-full flex flex-col lg:flex-row-reverse overflow-hidden gap-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-10">
+      {/* Header Section */}
+      <div className="flex items-center mb-8">
+        <div className="flex-1 h-0.5 bg-red-800 mr-4 lg:mr-6" />
+        <h1 className="text-3xl sm:text-4xl text-gray-800 whitespace-nowrap">Analyze Articles</h1>
+      </div>
+
+      <section className="w-full flex justify-center items-center mb-10">
+        <div className="w-full flex flex-col lg:flex-row-reverse overflow-hidden gap-8">
         {/* Left: Hero content & form */}
         <div className="flex-1 flex flex-col justify-center gap-4">
-          <div className="flex items-center gap-4 mb-2">
-            <img src={logoFull} alt="Truth Tribunal Logo" className="h-18 w-auto lg:hidden" />
-            <h1 className="text-3xl sm:text-4xl text-red-800 tracking-tight">Fake News Detection</h1>
-          </div>
           <p className="text-gray-700 text-lg mb-4 max-w-xl">Paste or type a news article below and our AI will instantly analyze it for authenticity. Empower yourself to spot misinformation!</p>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <textarea
@@ -265,11 +268,12 @@ export const Detection = () => {
           )}
         </div>
         {/* Right: Illustration or logo */}
-        <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-red-100 via-gray-100 to-gray-100 px-10">
+        <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-red-100 via-gray-100 to-gray-100 px-10 py-10">
           <img src={logoFull} alt="AI Detection Illustration" className="h-48 w-auto drop-shadow-xl" />
           <div className="mt-6 text-center text-gray-500 text-base max-w-xs">AI-powered, real-time news verification for everyone.</div>
         </div>
       </div>
-    </section>
+      </section>
+    </div>
   )
 }

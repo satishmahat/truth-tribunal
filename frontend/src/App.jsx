@@ -6,6 +6,7 @@ import ReporterDashboard from './pages/ReporterDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import PrivateRoute from './auth/PrivateRoute';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import ReporterLogin from './pages/ReporterLogin';
 import AdminLogin from './pages/AdminLogin';
 import NotFound from './pages/NotFound';
@@ -48,6 +49,7 @@ function App() {
           <Route path="/news/:id" element={<NewsDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+      <Footer />
       </BrowserRouter>
     </AuthProvider>
   );

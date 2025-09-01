@@ -14,10 +14,6 @@ export const Editorials = () => {
   const rest = news.slice(1, 4); // Show up to 3 on the right
   return (
     <div className='w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-        <div className="flex items-center mb-8">
-        <h1 className="text-3xl sm:text-4xl text-gray-800 whitespace-nowrap">Our Editorials</h1>
-        <div className="flex-1 h-0.5 bg-red-800 ml-4 lg:ml-6" />
-      </div>
       <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-6">
         {/* Hero card (left, spans 2 columns on desktop) */}
         <div className="lg:col-span-2 flex flex-col justify-between">
