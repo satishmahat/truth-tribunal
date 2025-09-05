@@ -14,6 +14,8 @@ import NewsDetail from './pages/NewsDetail';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import LoginDashboard from './pages/LoginDashboard';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -47,6 +49,8 @@ function App() {
             </PrivateRoute>
           } />
           <Route path="/news/:id" element={<NewsDetail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       <Footer />

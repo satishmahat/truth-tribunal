@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -64,6 +65,16 @@ export default function ReporterLogin() {
             <input name="license_key" value={form.license_key} onChange={handleChange} placeholder="License Key" required className="w-full bg-transparent outline-none text-gray-800 placeholder-gray-400" />
           </div>
           <button type="submit" className="w-full bg-red-700 text-white py-2 rounded-lg hover:bg-red-800 transition text-lg shadow-md mt-2">Login</button>
+          
+          {/* Forgot Password Link */}
+          <div className="text-center">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-gray-600 hover:text-red-700 transition"
+            >
+              Forgot your password?
+            </Link>
+          </div>
         </form>
         {/* Right: Illustration or Info */}
         <div className="flex-1 bg-gradient-to-br from-red-50 via-white to-gray-100 p-8 flex flex-col justify-center items-center gap-8">

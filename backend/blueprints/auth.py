@@ -1,8 +1,10 @@
 from flask import Blueprint, request, jsonify
 from extensions import db
-from models import User
+from models import User, PasswordResetToken
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
+from services.email_service import send_password_reset_email
+from datetime import datetime, timedelta
 import re
 
 auth_bp = Blueprint('auth', __name__)
@@ -55,6 +57,148 @@ def validate_registration_data(data):
     # No validation for citizenship number - removed as requested
     
     return len(errors) == 0, errors
+
+def validate_password_reset_data(data):
+    """
+    Validate password reset data
+    """
+    errors = []
+    
+    # Password validation with regex
+    if not data.get('password'):
+        errors.append('Password is required')
+    elif len(data['password']) < 8:
+        errors.append('Password must be at least 8 characters long')
+    elif not re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)', data['password']):
+        errors.append('Password must contain at least one uppercase letter, one lowercase letter, and one number')
+    
+    # Confirm password validation
+    if not data.get('confirm_password'):
+        errors.append('Confirm password is required')
+    elif data['password'] != data['confirm_password']:
+        errors.append('Passwords do not match')
+    
+    return len(errors) == 0, errors
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """
+    Request password reset - send reset email
+    """
+    data = request.json or {}
+    
+    if not data.get('email'):
+        return jsonify({'msg': 'Email is required'}), 400
+    
+    email = data['email'].strip().lower()
+    user = User.query.filter_by(email=email).first()
+    
+    # Always return success to prevent email enumeration attacks
+    if not user:
+        return jsonify({'msg': 'If an account with that email exists, a password reset link has been sent'}), 200
+    
+    # Check if user is approved (only approved users can reset password)
+    if not user.is_approved:
+        return jsonify({'msg': 'If an account with that email exists, a password reset link has been sent'}), 200
+    
+    try:
+        # Invalidate any existing reset tokens for this user
+        PasswordResetToken.query.filter_by(user_id=user.id, used=False).update({'used': True})
+        
+        # Create new reset token
+        token = PasswordResetToken.generate_token()
+        expires_at = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+        
+        reset_token = PasswordResetToken(
+            user_id=user.id,
+            token=token,
+            expires_at=expires_at
+        )
+        
+        db.session.add(reset_token)
+        db.session.commit()
+        
+        # Send reset email
+        email_sent = send_password_reset_email(user.email, user.name, token)
+        
+        if email_sent:
+            return jsonify({'msg': 'If an account with that email exists, a password reset link has been sent'}), 200
+        else:
+            return jsonify({'msg': 'Failed to send reset email. Please try again later.'}), 500
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'msg': 'Failed to process password reset request. Please try again later.'}), 500
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    """
+    Reset password using token
+    """
+    data = request.json or {}
+    
+    if not data.get('token'):
+        return jsonify({'msg': 'Reset token is required'}), 400
+    
+    # Validate password data
+    is_valid, validation_errors = validate_password_reset_data(data)
+    if not is_valid:
+        return jsonify({'msg': 'Validation failed', 'errors': validation_errors}), 400
+    
+    token = data['token'].strip()
+    
+    try:
+        # Find the reset token
+        reset_token = PasswordResetToken.query.filter_by(token=token).first()
+        
+        if not reset_token:
+            return jsonify({'msg': 'Invalid or expired reset token'}), 400
+        
+        if not reset_token.is_valid():
+            return jsonify({'msg': 'Invalid or expired reset token'}), 400
+        
+        # Get the user
+        user = reset_token.user
+        
+        # Update password
+        user.password_hash = generate_password_hash(data['password'])
+        
+        # Mark token as used
+        reset_token.used = True
+        
+        db.session.commit()
+        
+        return jsonify({'msg': 'Password has been reset successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'msg': 'Failed to reset password. Please try again later.'}), 500
+
+@auth_bp.route('/validate-reset-token', methods=['POST'])
+def validate_reset_token():
+    """
+    Validate if a reset token is valid
+    """
+    data = request.json or {}
+    
+    if not data.get('token'):
+        return jsonify({'msg': 'Reset token is required'}), 400
+    
+    token = data['token'].strip()
+    
+    try:
+        reset_token = PasswordResetToken.query.filter_by(token=token).first()
+        
+        if not reset_token:
+            return jsonify({'msg': 'Invalid or expired reset token'}), 400
+        
+        if not reset_token.is_valid():
+            return jsonify({'msg': 'Invalid or expired reset token'}), 400
+        
+        return jsonify({'msg': 'Token is valid', 'user_email': reset_token.user.email}), 200
+        
+    except Exception as e:
+        return jsonify({'msg': 'Failed to validate token'}), 500
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
