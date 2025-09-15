@@ -36,7 +36,7 @@ def download_and_extract_imdb(data_dir='imdb_data'):
 download_and_extract_imdb()
 
 class IMDBDataset(Dataset):
-    def __init__(self, root_dir, split, vocab=None, max_seq_len=256):
+    def __init__(self, root_dir, split, vocab=None, max_seq_len=512):
         self.samples = []
         self.labels = []
         self.max_seq_len = max_seq_len
@@ -124,19 +124,96 @@ WEIGHT_DECAY = 0.15
 GRAD_CLIP = 1.0
 MAX_SEQ_LEN = 512
 
-# 4. Data (use IMDb)
+# 4. Data (use IMDb) - Modified to combine train and test
 imdb_root = 'imdb_data/aclImdb'
-train_dataset = IMDBDataset(imdb_root, 'train', max_seq_len=MAX_SEQ_LEN)
-os.makedirs('result', exist_ok=True)
-torch.save(train_dataset.vocab, 'result/vocab.pt')
-# Set VOCAB_SIZE to match the actual vocab size
-VOCAB_SIZE = len(train_dataset.vocab)
-test_dataset = IMDBDataset(imdb_root, 'test', vocab=train_dataset.vocab, max_seq_len=MAX_SEQ_LEN)
 
-# Optionally split train into train/val
-train_size = int(0.80 * len(train_dataset))
-val_size = len(train_dataset) - train_size
-train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
+# Create a combined dataset from both train and test
+class CombinedIMDBDataset(Dataset):
+    def __init__(self, root_dir, vocab=None, max_seq_len=512):
+        self.samples = []
+        self.labels = []
+        self.max_seq_len = max_seq_len
+        
+        # Load from both train and test directories
+        for split in ['train', 'test']:
+            for label in ['pos', 'neg']:
+                files = glob.glob(os.path.join(root_dir, split, label, '*.txt'))
+                for f in files:
+                    with open(f, encoding='utf-8') as file:
+                        text = file.read().strip()
+                        self.samples.append(text)
+                        self.labels.append(1 if label == 'pos' else 0)
+        
+        # Build vocab if not provided
+        if vocab is None:
+            self.vocab = self.build_vocab()
+        else:
+            self.vocab = vocab
+        
+        # Pre-tokenize for speed
+        self.tokenized = [re.findall(r'\w+', s.lower()) for s in self.samples]
+        if len(self.samples) == 0:
+            raise ValueError(f"No samples found in {root_dir}")
+    
+    def build_vocab(self):
+        counter = Counter(chain.from_iterable([re.findall(r'\w+', s.lower()) for s in self.samples]))
+        vocab = {'<pad>': 0, '<unk>': 1}
+        for word, _ in counter.most_common(20000):
+            vocab[word] = len(vocab)
+        return vocab
+    
+    def __len__(self):
+        return len(self.samples)
+    
+    def __getitem__(self, idx):
+        tokens = self.tokenized[idx]
+        ids = [self.vocab.get(token, self.vocab['<unk>']) for token in tokens]
+        # Pad/truncate
+        if len(ids) < self.max_seq_len:
+            ids += [self.vocab['<pad>']] * (self.max_seq_len - len(ids))
+        else:
+            ids = ids[:self.max_seq_len]
+        return torch.tensor(ids, dtype=torch.long), torch.tensor(self.labels[idx], dtype=torch.float)
+
+# Create combined dataset
+combined_dataset = CombinedIMDBDataset(imdb_root, max_seq_len=MAX_SEQ_LEN)
+os.makedirs('result', exist_ok=True)
+torch.save(combined_dataset.vocab, 'result/vocab.pt')
+
+# Set VOCAB_SIZE to match the actual vocab size
+VOCAB_SIZE = len(combined_dataset.vocab)
+
+# Custom split: 34k train, 8k val, 8k test (total 50k)
+train_size = 34000
+val_size = 8000
+test_size = 8000
+
+# Verify total size
+total_size = len(combined_dataset)
+print(f"Total dataset size: {total_size}")
+print(f"Requested split: {train_size} train, {val_size} val, {test_size} test")
+print(f"Total requested: {train_size + val_size + test_size}")
+
+if train_size + val_size + test_size > total_size:
+    print(f"Warning: Requested split ({train_size + val_size + test_size}) exceeds total size ({total_size})")
+    # Adjust test size to fit
+    test_size = total_size - train_size - val_size
+    print(f"Adjusted test size to: {test_size}")
+
+# Create the splits
+train_dataset, temp_dataset = random_split(
+    combined_dataset, [train_size, val_size + test_size], 
+    generator=torch.Generator().manual_seed(42)
+)
+val_dataset, test_dataset = random_split(
+    temp_dataset, [val_size, test_size], 
+    generator=torch.Generator().manual_seed(42)
+)
+
+print(f"Final split sizes:")
+print(f"Train: {len(train_dataset)}")
+print(f"Validation: {len(val_dataset)}")
+print(f"Test: {len(test_dataset)}")
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
@@ -150,7 +227,7 @@ optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGH
 criterion = nn.BCEWithLogitsLoss().to(device)
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
 
-# Early stopping variables
+# Early stopping parameters
 best_val_loss = float('inf')
 patience = 50
 counter = 0

@@ -3,6 +3,7 @@ import os
 import re
 import torch
 import torch.nn as nn
+from services.sentiment_explanation_service import explain_sentiment_with_prediction, predict_sentiment_with_probabilities
 
 
 sentiment_bp = Blueprint('sentiment', __name__)
@@ -119,5 +120,24 @@ def sentiment_predict():
         })
     except Exception as e:
         return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
+
+
+@sentiment_bp.route('/sentiment/report', methods=['POST'])
+def sentiment_report():
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+
+    try:
+        sentiment, probabilities, tokens, signed_importances = explain_sentiment_with_prediction(text)
+        return jsonify({
+            "sentiment": sentiment,
+            "probabilities": probabilities,
+            "tokens": tokens,
+            "token_importances_signed": signed_importances
+        })
+    except Exception as e:
+        return jsonify({"error": f"Sentiment report failed: {str(e)}"}), 500
 
 
