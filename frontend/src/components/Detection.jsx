@@ -14,14 +14,17 @@ export const Detection = () => {
   const [loadingDetect, setLoadingDetect] = useState(false);
   const [loadingSentiment, setLoadingSentiment] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [loadingSentimentReport, setLoadingSentimentReport] = useState(false);
   const [error, setError] = useState(null);
   const [sentiment, setSentiment] = useState(null);
+  const [sentimentReport, setSentimentReport] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoadingDetect(true);
     setError(null);
     setSentiment(null);
+    setSentimentReport(null);
     setResult(null);
     setProbs(null);
     setReport(null);
@@ -53,6 +56,7 @@ export const Detection = () => {
     setAdjusted(null);
     setUncertain(false);
     setSentiment(null);
+    setSentimentReport(null);
     try {
       const { data } = await api.post('/sentiment', { text });
       if (data?.error) throw { response: { data } };
@@ -77,6 +81,19 @@ export const Detection = () => {
       setError(err.response?.data?.error || 'Could not fetch report');
     } finally {
       setLoadingReport(false);
+    }
+  }
+
+  const fetchSentimentReport = async () => {
+    setLoadingSentimentReport(true);
+    setError(null);
+    try {
+      const { data } = await api.post('/sentiment/report', { text });
+      setSentimentReport(data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not fetch sentiment report');
+    } finally {
+      setLoadingSentimentReport(false);
     }
   }
 
@@ -132,6 +149,68 @@ export const Detection = () => {
                   <span>{sentiment.label}</span>
                   <span className="ml-2 text-sm text-gray-600">(Confidence: {Number(sentiment.confidence).toFixed(2)}%)</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={fetchSentimentReport}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white text-indigo-700 border border-indigo-300 hover:bg-indigo-50 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={loadingSentimentReport || !text.trim()}
+                >
+                  <FiFileText />
+                  {loadingSentimentReport ? 'Generating Report...' : 'View Report'}
+                </button>
+              </div>
+            </div>
+          )}
+          {sentimentReport && (
+            <div className="mt-3 p-3 border rounded-md bg-gray-50">
+              <div className="text-sm text-gray-700 mb-2">
+                Sentiment analysis tokens and importances
+                <span className="ml-2 text-xs text-gray-500">
+                  stronger color = higher influence; color indicates support vs oppose prediction
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
+                <div className="flex items-center gap-1">
+                  <span style={{ backgroundColor: sentimentReport.sentiment === 'Positive' ? 'rgba(22,163,74,0.6)' : 'rgba(220,38,38,0.6)' }} className="inline-block w-3 h-3 rounded" />
+                  supports {sentimentReport.sentiment}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span style={{ backgroundColor: sentimentReport.sentiment === 'Positive' ? 'rgba(220,38,38,0.6)' : 'rgba(22,163,74,0.6)' }} className="inline-block w-3 h-3 rounded" />
+                  opposes {sentimentReport.sentiment}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1 text-sm">
+                {(() => {
+                  const tokens = sentimentReport.tokens || [];
+                  const signed = sentimentReport.token_importances_signed || [];
+                  const absVals = signed.map(v => Math.abs(v));
+                  const pairs = absVals.map((v, i) => ({ i, v }));
+                  const topN = new Set(pairs.sort((a, b) => b.v - a.v).slice(0, 10).map(p => p.i));
+                  return tokens.map((tok, idx) => {
+                    const s = Number.isFinite(signed[idx]) ? signed[idx] : 0;
+                    // Exaggerate using gamma curve
+                    const intensity = Math.min(1, Math.pow(Math.abs(s), 0.6));
+                    const supportsPred = s >= 0;
+                    const isPredPositive = sentimentReport.sentiment === 'Positive';
+                    const baseColor = supportsPred
+                      ? (isPredPositive ? [22, 163, 74] : [220, 38, 38])
+                      : (isPredPositive ? [220, 38, 38] : [22, 163, 74]);
+                    const alpha = 0.2 + 0.8 * intensity;
+                    const borderAlpha = 0.35 + 0.65 * intensity;
+                    const bg = `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, ${alpha})`;
+                    const border = `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, ${borderAlpha})`;
+                    const fontWeight = topN.has(idx) ? 700 : 400;
+                    return (
+                      <span
+                        key={`${tok}-${idx}`}
+                        style={{ backgroundColor: bg, borderColor: border, fontWeight }}
+                        className="border px-1.5 py-0.5 rounded"
+                      >
+                        {tok}
+                      </span>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
