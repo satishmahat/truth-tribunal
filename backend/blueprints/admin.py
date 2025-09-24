@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from extensions import db
-from models import User
+from models import User, NewsArticle
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from services.email_service import send_approval_email
 import random
@@ -124,4 +124,37 @@ def revoke_reporter():
     user.is_approved = False
     user.license_key = None  # Optionally clear the license
     db.session.commit()
-    return jsonify({'msg': 'Reporter revoked'}) 
+    return jsonify({'msg': 'Reporter revoked'})
+
+@admin_bp.route('/news', methods=['GET'])
+@admin_required
+def get_all_news():
+    """Get all news articles with reporter information for admin"""
+    articles = NewsArticle.query.order_by(NewsArticle.created_at.desc()).all()
+    return jsonify([
+        {
+            'id': article.id,
+            'title': article.title,
+            'content': article.content,
+            'reporter_id': article.reporter_id,
+            'reporter_name': article.reporter.name if article.reporter else 'Unknown',
+            'reporter_license': article.reporter.license_key if article.reporter else None,
+            'created_at': article.created_at.isoformat() if article.created_at else None,
+            'updated_at': article.updated_at.isoformat() if article.updated_at else None,
+            'cover_image': article.cover_image,
+            'category': article.category
+        }
+        for article in articles
+    ])
+
+@admin_bp.route('/news/<int:article_id>', methods=['DELETE'])
+@admin_required
+def delete_news_article(article_id):
+    """Delete any news article (admin only)"""
+    article = NewsArticle.query.get(article_id)
+    if not article:
+        return jsonify({'msg': 'Article not found'}), 404
+    
+    db.session.delete(article)
+    db.session.commit()
+    return jsonify({'msg': 'Article deleted successfully'}) 

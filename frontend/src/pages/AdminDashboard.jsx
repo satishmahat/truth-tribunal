@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../auth/AuthContext';
-import { FaUserShield, FaSearch, FaKey, FaUsers, FaChartLine, FaEye, FaTimes, FaPhone, FaIdCard, FaEnvelope, FaCalendar } from 'react-icons/fa';
+import { FaUserShield, FaSearch, FaKey, FaUsers, FaChartLine, FaEye, FaTimes, FaPhone, FaIdCard, FaEnvelope, FaCalendar, FaExclamationTriangle, FaNewspaper, FaTrash } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 export default function AdminDashboard() {
   const [pending, setPending] = useState([]);
   const [reporters, setReporters] = useState([]);
+  const [newsArticles, setNewsArticles] = useState([]);
   const [search, setSearch] = useState("");
+  const [newsSearch, setNewsSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [userToRevoke, setUserToRevoke] = useState(null);
+  const [showNewsConfirmModal, setShowNewsConfirmModal] = useState(false);
+  const [articleToDelete, setArticleToDelete] = useState(null);
   const { token } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadData();
@@ -19,20 +27,82 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     try {
-      const [pendingRes, reportersRes] = await Promise.all([
+      const [pendingRes, reportersRes, newsRes] = await Promise.all([
         api.get('/admin/requests', {
           headers: { Authorization: `Bearer ${token}` }
         }),
         api.get('/admin/reporters', {
           headers: { Authorization: `Bearer ${token}` }
+        }),
+        api.get('/admin/news', {
+          headers: { Authorization: `Bearer ${token}` }
         })
       ]);
       setPending(pendingRes.data);
       setReporters(reportersRes.data);
+      setNewsArticles(newsRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
     }
+  };
+
+  const handleRevokeClick = (user) => {
+    setUserToRevoke(user);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmRevoke = async () => {
+    if (!userToRevoke) return;
+    
+    try {
+      await api.post('/admin/revoke', { user_id: userToRevoke.id }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setReporters(reporters.filter(rep => rep.id !== userToRevoke.id));
+      toast.success(`Reporter "${userToRevoke.name}" has been revoked successfully.`);
+    } catch (err) {
+      console.error('Revoke error:', err);
+      toast.error('Failed to revoke reporter. Please try again.');
+    } finally {
+      setShowConfirmModal(false);
+      setUserToRevoke(null);
+    }
+  };
+
+  const handleCancelRevoke = () => {
+    setShowConfirmModal(false);
+    setUserToRevoke(null);
+    toast.info('Revoke operation cancelled.');
+  };
+
+  const handleDeleteNewsClick = (article) => {
+    setArticleToDelete(article);
+    setShowNewsConfirmModal(true);
+  };
+
+  const handleConfirmDeleteNews = async () => {
+    if (!articleToDelete) return;
+    
+    try {
+      await api.delete(`/admin/news/${articleToDelete.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNewsArticles(newsArticles.filter(article => article.id !== articleToDelete.id));
+      toast.success(`Article "${articleToDelete.title}" has been deleted successfully.`);
+    } catch (err) {
+      console.error('Delete article error:', err);
+      toast.error('Failed to delete article. Please try again.');
+    } finally {
+      setShowNewsConfirmModal(false);
+      setArticleToDelete(null);
+    }
+  };
+
+  const handleCancelDeleteNews = () => {
+    setShowNewsConfirmModal(false);
+    setArticleToDelete(null);
+    toast.info('Delete operation cancelled.');
   };
 
   const previewUser = async (userId) => {
@@ -83,6 +153,7 @@ export default function AdminDashboard() {
   // Stats (example, you can adjust as needed)
   const totalReporters = reporters.length;
   const totalPending = pending.length;
+  const totalNews = newsArticles.length;
   const totalEntities = totalReporters+totalPending
 
   return (
@@ -99,7 +170,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-white/20">
@@ -130,6 +201,17 @@ export default function AdminDashboard() {
                 <div className="ml-4">
                   <p className="text-sm font-medium opacity-75">Pending Approvals</p>
                   <p className="text-2xl font-semibold">{totalPending}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-white/20">
+                  <FaNewspaper className="h-6 w-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium opacity-75">Total Articles</p>
+                  <p className="text-2xl font-semibold">{totalNews}</p>
                 </div>
               </div>
             </div>
@@ -234,22 +316,9 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap text-gray-700">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
-                          onClick={async () => {
-                            if(window.confirm(`Revoke reporter ${r.name}?`)) {
-                              try {
-                                await api.post('/admin/revoke', { user_id: r.id }, {
-                                  headers: { Authorization: `Bearer ${token}` }
-                                });
-                                setReporters(reporters.filter(rep => rep.id !== r.id));
-                                toast.success('Reporter revoked.');
-                              } catch (err) {
-                                toast.error('Failed to revoke reporter.');
-                              }
-                            } else {
-                              toast.info('Revoke cancelled.');
-                            }
-                          }}
-                          className="bg-red-700 text-white px-4 py-1 rounded hover:bg-red-800 transition"
+                          onClick={() => handleRevokeClick(r)}
+                          className="bg-red-700 text-white px-4 py-1 rounded hover:bg-red-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                          title={`Revoke reporter ${r.name}`}
                         >
                           Revoke
                         </button>
@@ -259,6 +328,86 @@ export default function AdminDashboard() {
               ) : (
                 <tr>
                   <td colSpan="5" className="px-6 py-4 text-center text-gray-500">No approved reporters.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* News Articles Table */}
+      <div className="bg-white shadow-sm p-8 mb-18 border border-gray-100">
+        <div className="flex items-center mb-6">
+          <div className="p-3 rounded-lg bg-red-50 mr-4">
+            <FaNewspaper className="h-6 w-6 text-red-800" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800">News Articles</h2>
+        </div>
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FaSearch className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={newsSearch}
+              onChange={e => setNewsSearch(e.target.value)}
+              placeholder="Search articles by title, reporter name, or license..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 sm:text-sm"
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr className="bg-red-50">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-red-700 uppercase tracking-wider">License</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-red-700 uppercase tracking-wider">Reporter Name</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-red-700 uppercase tracking-wider">Title</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-red-700 uppercase tracking-wider">Created At</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-red-700 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {newsArticles && newsArticles.length > 0 ? (
+                newsArticles
+                  .filter(article =>
+                    newsSearch === "" ||
+                    article.title.toLowerCase().includes(newsSearch.toLowerCase()) ||
+                    article.reporter_name.toLowerCase().includes(newsSearch.toLowerCase()) ||
+                    (article.reporter_license && article.reporter_license.toLowerCase().includes(newsSearch.toLowerCase()))
+                  )
+                  .map(article => (
+                    <tr key={article.id} className="hover:bg-red-50 transition-colors duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap font-mono text-gray-700">{article.reporter_license || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-700">{article.reporter_name}</td>
+                      <td className="px-6 py-4 text-gray-700">
+                        <button
+                          onClick={() => window.open(`/news/${article.id}`, '_blank')}
+                          className="text-left text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                        >
+                          {article.title}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                        {article.created_at ? new Date(article.created_at).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleDeleteNewsClick(article)}
+                          className="bg-red-700 text-white px-4 py-1 rounded hover:bg-red-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center space-x-1"
+                          title={`Delete article "${article.title}"`}
+                        >
+                          <FaTrash className="h-3 w-3" />
+                          <span>Delete</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-gray-500">No news articles found.</td>
                 </tr>
               )}
             </tbody>
@@ -414,6 +563,94 @@ export default function AdminDashboard() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <FaExclamationTriangle className="h-8 w-8 text-red-600" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Confirm Revoke Action
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-gray-600">
+                  Are you sure you want to revoke reporter <strong>"{userToRevoke?.name}"</strong>?
+                </p>
+                <p className="text-sm text-red-600 mt-2">
+                  This action cannot be undone and will immediately revoke their access.
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={handleCancelRevoke}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmRevoke}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                >
+                  Revoke Reporter
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* News Delete Confirmation Modal */}
+      {showNewsConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <FaExclamationTriangle className="h-8 w-8 text-red-600" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Confirm Delete Article
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-gray-600">
+                  Are you sure you want to delete the article <strong>"{articleToDelete?.title}"</strong>?
+                </p>
+                <p className="text-sm text-red-600 mt-2">
+                  This action cannot be undone and will permanently remove the article.
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={handleCancelDeleteNews}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDeleteNews}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                >
+                  Delete Article
+                </button>
+              </div>
             </div>
           </div>
         </div>
