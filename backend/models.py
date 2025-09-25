@@ -48,3 +48,6 @@ class NewsArticle(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 
     cover_image = db.Column(db.String(500))
     category = db.Column(db.String(50))
+    
+    # Relationship
+    reporter = db.relationship('User', backref='news_articles')
